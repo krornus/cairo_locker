@@ -14,8 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <pwd.h>
 
 #include "render.h"
 #include "cairo_locker.h"
@@ -250,8 +248,6 @@ renderer_t init_cairo_renderer(Display* display, int screen_index)
 
     renderer.pixmap = XCreatePixmap(display, DefaultRootWindow(display), x, y, DefaultDepth(display, screen_index));
     surface = cairo_xlib_surface_create(display, renderer.pixmap, DefaultVisual(display, screen_index), x, y);
-
-    cairo_surface_write_to_png(surface, "out.png");
     renderer.cr = cairo_create(surface);
 
 
