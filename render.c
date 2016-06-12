@@ -19,22 +19,16 @@ extern int screen_count;
 // called when screen is initialized or after backspacing back to beginning of password
 void idle(cairo_t* cr)
 {
-    cairo_set_source_rgb(cr, .0588, .4235, .7411);
-    cairo_paint(cr);
 }
 
 // called when ascii key is pressed, calling function (below) also has access to pressed KeySym
 void keypress(cairo_t *cr)
 {
-    cairo_set_source_rgb(cr, .0588, .4235, .7411);
-    cairo_paint(cr);
 }
 
 // called when password entered is incorrect
 void incorrect(cairo_t *cr)
 {
-    cairo_set_source_rgb(cr, .0588, .4235, .7411);
-    cairo_paint(cr);
 }
 
 
