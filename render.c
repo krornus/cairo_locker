@@ -4,8 +4,6 @@
 
 #include "cairo_locker.h"
 
-#define BACKGROUND_RGB 
-
 void cairo_draw_default(void);
 void cairo_draw_keypressed(KeySym ksym);
 void cairo_draw_passwd_incorrect(void);
