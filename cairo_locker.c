@@ -1,6 +1,9 @@
 #define _XOPEN_SOURCE 500
 
+#if HAVE_SHADOW_H
 #include <shadow.h>
+#endif 
+
 #include <ctype.h>
 
 #include <X11/Xlib.h>
@@ -14,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pwd.h>
 
 #include "render.h"
 #include "cairo_locker.h"
@@ -21,12 +25,13 @@
 #define PASSWD_LEN 256
 
 int main(int argc, char ** argv);
-int handle_input(KeySym ksym, char * buf, char * passwd, int * len);
+int handle_input(KeySym ksym, char * buf, int rcount, char * passwd, int * len);
 Window init_screen(Display *display, int screen_index);
 void clear_screens();
 renderer_t init_cairo_renderer(Display * display, int screen_index);
 int check_passwd(char * passwd);
 
+cairo_surface_t * desktop_surface_t(Display * display, int screen_index, int x, int y);
 void cairo_draw_default(void);
 void cairo_draw_keypressed(KeySym ksym);
 void cairo_draw_passwd_incorrect(void);
@@ -34,7 +39,6 @@ void cairo_draw_passwd_incorrect(void);
 Display * display;
 renderer_t * renderers;
 int screen_count;
-XImage *desktop;
 
 int main(int argc, char ** argv)
 {
@@ -53,7 +57,6 @@ int main(int argc, char ** argv)
 
     screen_count = ScreenCount(display);
     renderers = malloc(sizeof(renderer_t)*screen_count);
-
 
     for(int sc = 0; sc < screen_count; sc++)
     {
@@ -75,8 +78,7 @@ int main(int argc, char ** argv)
         {
             case KeyPress:
                 {
-
-                    authorized = handle_input(ksym, buf, input_passwd, &len);
+                    authorized = handle_input(ksym, buf, rcount, input_passwd, &len);
                     break;
                 }
             default:
@@ -88,20 +90,19 @@ int main(int argc, char ** argv)
                     break;
                 }
         }
-
     }
 
     clear_screens();
     free(renderers);
 }
 
-int handle_input(KeySym ksym, char * buf, char * passwd, int * len)
+int handle_input(KeySym ksym, char * buf, int rcount, char * passwd, int * len)
 {
 
     if(*len >= PASSWD_LEN - 1)
     {
         printf("passwd exceeded max len");
-        return 0;
+        exit(1);
     }
 
     if (IsKeypadKey(ksym))
@@ -115,7 +116,6 @@ int handle_input(KeySym ksym, char * buf, char * passwd, int * len)
 
     switch(ksym)
     {
-
         case XK_Return:
             {
                 passwd[*len] = '\0';
@@ -158,8 +158,8 @@ int handle_input(KeySym ksym, char * buf, char * passwd, int * len)
                     break;
                 
                 cairo_draw_keypressed(ksym);
-                memcpy(passwd + *len, buf, 1); 
-                *len += 1; 
+                memcpy(passwd + *len, buf, rcount); 
+                *len += rcount; 
 
                 break;
             }
@@ -171,18 +171,37 @@ int handle_input(KeySym ksym, char * buf, char * passwd, int * len)
 int check_passwd(char * passwd)
 {
     const char * pw;
-    struct spwd *sp;
-    sp = getspnam(getenv("USER"));
+    struct passwd *pws;
 
-    if(!sp)
+    pws = getpwuid(getuid());
+
+    if(!pws)
     {
-        printf("null shadow entry, suid and uuid\n");
-        return 0;
+       printf("failed to retrive password\n");
+       exit(1);
     }
 
-    endspent();
+    endpwent();
 
-    pw = sp->sp_pwdp;
+    pw = pws->pw_passwd;
+
+#if HAVE_SHADOW_H
+    if(!strcmp(pw, "x"))
+    {
+        struct spwd *sp;
+        sp = getspnam(getenv("USER"));
+
+        if(!sp)
+        {
+            printf("null shadow entry, suid and uuid\n");
+            exit(1);
+        }
+
+        endspent();
+
+        pw = sp->sp_pwdp;
+    }
+#endif
 
     return strcmp(crypt(passwd, pw), pw);
 }
@@ -197,13 +216,15 @@ Window init_screen(Display *display, int screen_index)
     int y;
     int len;
 
+    x = DisplayWidth(display, screen_index);
+    y = DisplayHeight(display, screen_index);
+
+
     root = RootWindow(display, screen_index);
 
     attr.override_redirect = 1;
     attr.background_pixel = BlackPixel(display, screen_index);
 
-    x = DisplayWidth(display, screen_index);
-    y = DisplayHeight(display, screen_index);
 
     window = XCreateWindow(display, root, 0, 0, x, y, 0, 
             DefaultDepth(display, screen_index), CopyFromParent, 
@@ -213,18 +234,10 @@ Window init_screen(Display *display, int screen_index)
 
     XMapRaised(display, window);
 
-    len = 1000;
-
-    if(len > 0)
+    while(XGrabKeyboard(display, root, True, GrabModeAsync, 
+                GrabModeAsync, CurrentTime) != GrabSuccess)
     {
-        for(len = 1000; len; len--)
-        {
-            if(XGrabKeyboard(display, root, True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess)
-            {
-                break;
-                usleep(1000);
-            }  
-        }
+        usleep(500);
     }
 
     XSelectInput(display, root, SubstructureNotifyMask);
@@ -236,19 +249,28 @@ renderer_t init_cairo_renderer(Display* display, int screen_index)
 {
     renderer_t renderer;
     cairo_surface_t * surface;
+    cairo_surface_t * desktop;
     Screen * screen;
     int x;
     int y;
 
+    x = DisplayWidth(display, screen_index);
+    y = DisplayHeight(display, screen_index);
+
+    // Remove this if clocker lags
+    renderer.desktop = desktop_surface_t(display, screen_index, x, y);
+
     renderer.window = init_screen(display, screen_index);
     screen = ScreenOfDisplay(display, screen_index);
-    x = screen -> width;
-    y = screen -> height;
 
-    renderer.pixmap = XCreatePixmap(display, DefaultRootWindow(display), x, y, DefaultDepth(display, screen_index));
-    surface = cairo_xlib_surface_create(display, renderer.pixmap, DefaultVisual(display, screen_index), x, y);
+
+    renderer.pixmap = XCreatePixmap(display, DefaultRootWindow(display), 
+            x, y, DefaultDepth(display, screen_index));
+
+    surface = cairo_xlib_surface_create(display, renderer.pixmap, 
+    DefaultVisual(display, screen_index), x, y);
+
     renderer.cr = cairo_create(surface);
-
 
     return renderer;
 }
@@ -261,3 +283,23 @@ void clear_screens()
     }
 }
 
+cairo_surface_t * desktop_surface_t(Display * display, int screen_index, int x, int y)
+{
+
+    XImage *image;
+    image = XGetImage(display, RootWindow(display, screen_index),
+            0, 0, x, y, AllPlanes, ZPixmap); 
+
+    int stride = cairo_format_stride_for_width (CAIRO_FORMAT_RGB24, x);
+
+    cairo_surface_t* surface =
+        cairo_image_surface_create_for_data(
+                (char*)(image->data),
+                CAIRO_FORMAT_RGB24,
+                image->width,
+                image->height,
+                stride);
+
+
+    return surface;
+}
