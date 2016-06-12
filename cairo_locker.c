@@ -25,7 +25,7 @@
 int main(int argc, char ** argv);
 int handle_input(KeySym ksym, char * buf, char * passwd, int * len);
 Window init_screen(Display *display, int screen_index);
-void clear_screen(Display * display, int screen_count, renderer_t * renderers);
+void clear_screens();
 renderer_t init_cairo_renderer(Display * display, int screen_index);
 int check_passwd(char * passwd);
 
@@ -36,6 +36,7 @@ void cairo_draw_passwd_incorrect(void);
 Display * display;
 renderer_t * renderers;
 int screen_count;
+XImage *desktop;
 
 int main(int argc, char ** argv)
 {
@@ -46,7 +47,6 @@ int main(int argc, char ** argv)
     int rcount;
     KeySym ksym;
 
-
     if((display = XOpenDisplay(NULL)) == NULL)
     {
         printf("Could not open xdisplay\n");
@@ -55,6 +55,7 @@ int main(int argc, char ** argv)
 
     screen_count = ScreenCount(display);
     renderers = malloc(sizeof(renderer_t)*screen_count);
+
 
     for(int sc = 0; sc < screen_count; sc++)
     {
@@ -92,7 +93,7 @@ int main(int argc, char ** argv)
 
     }
 
-    clear_screen(display, screen_count, renderers);
+    clear_screens();
     free(renderers);
 }
 
@@ -124,7 +125,7 @@ int handle_input(KeySym ksym, char * buf, char * passwd, int * len)
 
                 if(check_passwd(passwd) == 0)
                 {
-                    exit(0);
+                    return 1;
                 }
                 else
                 {
@@ -202,15 +203,16 @@ Window init_screen(Display *display, int screen_index)
     root = RootWindow(display, screen_index);
 
     attr.override_redirect = 1;
-    attr.background_pixel = BlackPixel(display, screen_index);
+    //attr.background_pixel = BlackPixel(display, screen_index);
 
     x = DisplayWidth(display, screen_index);
     y = DisplayHeight(display, screen_index);
 
     window = XCreateWindow(display, root, 0, 0, x, y, 0, 
             DefaultDepth(display, screen_index), CopyFromParent, 
-            DefaultVisual(display, screen_index), CWOverrideRedirect | CWBackPixel, 
+            DefaultVisual(display, screen_index), CWOverrideRedirect /*| CWBackPixel*/, 
             &attr);
+    
 
     XMapRaised(display, window);
 
@@ -249,12 +251,14 @@ renderer_t init_cairo_renderer(Display* display, int screen_index)
     renderer.pixmap = XCreatePixmap(display, DefaultRootWindow(display), x, y, DefaultDepth(display, screen_index));
     surface = cairo_xlib_surface_create(display, renderer.pixmap, DefaultVisual(display, screen_index), x, y);
 
+    cairo_surface_write_to_png(surface, "out.png");
     renderer.cr = cairo_create(surface);
+
 
     return renderer;
 }
 
-void clear_screen(Display * display, int screen_count, renderer_t * renderers)
+void clear_screens()
 {
     for(int sc = 0; sc < screen_count; sc++)
     {
