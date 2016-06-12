@@ -203,14 +203,14 @@ Window init_screen(Display *display, int screen_index)
     root = RootWindow(display, screen_index);
 
     attr.override_redirect = 1;
-    //attr.background_pixel = BlackPixel(display, screen_index);
+    attr.background_pixel = BlackPixel(display, screen_index);
 
     x = DisplayWidth(display, screen_index);
     y = DisplayHeight(display, screen_index);
 
     window = XCreateWindow(display, root, 0, 0, x, y, 0, 
             DefaultDepth(display, screen_index), CopyFromParent, 
-            DefaultVisual(display, screen_index), CWOverrideRedirect /*| CWBackPixel*/, 
+            DefaultVisual(display, screen_index), CWOverrideRedirect | CWBackPixel, 
             &attr);
     
 
