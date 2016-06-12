@@ -1,12 +1,12 @@
 CC=gcc
-DEPS =
+DEPS=render.c
 
 INC=`pkg-config --cflags --libs cairo x11` -lcrypt
 CFLAGS=-I. $(INC) 
 
-ODIR = obj
-_OBJ = cairo_locker.o
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+ODIR=obj
+_OBJ=cairo_locker.o render.o
+OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
 $(ODIR)/%.o: %.c $(DEPS)

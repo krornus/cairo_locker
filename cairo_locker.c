@@ -17,64 +17,25 @@
 #include <sys/types.h>
 #include <pwd.h>
 
-#define PASSWD_LEN 256
+#include "render.h"
+#include "cairo_locker.h"
 
-typedef struct renderer {
-    Window window;
-    cairo_t * cr;
-    Pixmap pixmap;
-} renderer_t;
+#define PASSWD_LEN 256
 
 int main(int argc, char ** argv);
 int handle_input(KeySym ksym, char * buf, char * passwd, int * len);
-void cairo_draw_default(void);
 Window init_screen(Display *display, int screen_index);
 void clear_screen(Display * display, int screen_count, renderer_t * renderers);
 renderer_t init_cairo_renderer(Display * display, int screen_index);
 int check_passwd(char * passwd);
-void cairo_draw_passwd_incorrect(void);
+
+void cairo_draw_default(void);
 void cairo_draw_keypressed(KeySym ksym);
+void cairo_draw_passwd_incorrect(void);
 
 Display * display;
 renderer_t * renderers;
 int screen_count;
-
-void cairo_draw_keypressed(KeySym ksym)
-{
-    for(int i = 0; i < screen_count; i++)
-    {
-        cairo_set_source_rgb(renderers[i].cr, 0.5, 0.5, 0.5);
-        cairo_paint(renderers[i].cr);
-
-        XSetWindowBackgroundPixmap(display, renderers[i].window, renderers[i].pixmap);
-        XClearWindow(display, renderers[i].window);
-    }
-}
-
-void cairo_draw_default()
-{
-    for (int i = 0; i < screen_count; ++i) 
-    {
-        cairo_set_source_rgb(renderers[i].cr, 0.07, 0.11, 0.21);
-        cairo_paint(renderers[i].cr);
-
-        XSetWindowBackgroundPixmap(display, renderers[i].window, renderers[i].pixmap);
-        XClearWindow(display, renderers[i].window);
-    }
-}
-
-void cairo_draw_passwd_incorrect()
-{
-
-    for(int i = 0; i < screen_count; i++)
-    {
-        cairo_set_source_rgb(renderers[i].cr, 0.78, 0.04, 0.04);
-        cairo_paint(renderers[i].cr);
-
-        XSetWindowBackgroundPixmap(display, renderers[i].window, renderers[i].pixmap);
-        XClearWindow(display, renderers[i].window);
-    }
-}
 
 int main(int argc, char ** argv)
 {
