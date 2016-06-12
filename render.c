@@ -36,6 +36,7 @@ void incorrect(cairo_t *cr)
     cairo_paint(cr);
 }
 
+
 void cairo_draw_default()
 {
     for (int i = 0; i < screen_count; ++i) 
