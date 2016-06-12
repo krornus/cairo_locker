@@ -1,2 +1,1 @@
-Not secure yet
-Assumes shadow defined
+Not secure yet, assumes shadow defined
