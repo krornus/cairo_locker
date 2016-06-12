@@ -1,7 +1,7 @@
 CC=gcc
 DEPS=render.c
 
-INC=`pkg-config --cflags --libs cairo x11` -lcrypt
+INC=`pkg-config --cflags --libs cairo x11` -lcrypt 
 CFLAGS=-I. $(INC) 
 
 ODIR=obj

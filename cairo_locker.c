@@ -111,7 +111,6 @@ int handle_input(KeySym ksym, char * buf, char * passwd, int * len)
         else if (ksym >= XK_KP_0 && ksym <= XK_KP_9)
             ksym = (ksym - XK_KP_0) + XK_0;
 
-        return 0;
     }
 
     switch(ksym)
@@ -155,7 +154,7 @@ int handle_input(KeySym ksym, char * buf, char * passwd, int * len)
             }
         default:
             {
-                if(!isascii(ksym) && !isdigit(ksym))
+                if(!isascii(ksym))
                     break;
                 
                 cairo_draw_keypressed(ksym);
