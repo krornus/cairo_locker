@@ -2,7 +2,7 @@
 
 #if HAVE_SHADOW_H
 #include <shadow.h>
-#endif 
+#endif
 
 #include <ctype.h>
 
@@ -32,6 +32,8 @@ renderer_t init_cairo_renderer(Display * display, int screen_index);
 int check_passwd(char * passwd);
 
 cairo_surface_t * desktop_surface_t(Display * display, int screen_index, int x, int y);
+void cairo_init(void);
+void cairo_dest(void);
 void cairo_draw_default(void);
 void cairo_draw_keypressed(KeySym ksym);
 void cairo_draw_passwd_incorrect(void);
@@ -43,7 +45,7 @@ int screen_count;
 int main(int argc, char ** argv)
 {
     int authorized;
-    char input_passwd[PASSWD_LEN]; 
+    char input_passwd[PASSWD_LEN];
     char buf[PASSWD_LEN];
     int len;
     int rcount;
@@ -60,7 +62,7 @@ int main(int argc, char ** argv)
 
     for(int sc = 0; sc < screen_count; sc++)
     {
-        renderers[sc] = init_cairo_renderer(display, sc); 
+        renderers[sc] = init_cairo_renderer(display, sc);
     }
 
     XSync(display, False);
@@ -69,6 +71,8 @@ int main(int argc, char ** argv)
     authorized = 0;
     len = 0;
 
+
+    cairo_init();
     cairo_draw_default();
 
     while(!authorized && !XNextEvent(display, &event))
@@ -85,12 +89,14 @@ int main(int argc, char ** argv)
                 {
                     for(int sc = 0; sc < screen_count; sc++)
                     {
-                        XRaiseWindow(display, renderers[sc].window); 
+                        XRaiseWindow(display, renderers[sc].window);
                     }
                     break;
                 }
         }
     }
+
+    cairo_dest();
 
     clear_screens();
     free(renderers);
@@ -129,7 +135,7 @@ int handle_input(KeySym ksym, char * buf, int rcount, char * passwd, int * len)
                    cairo_draw_passwd_incorrect();
                 }
 
-                int i = 0; 
+                int i = 0;
                 *len = 0;
                 while(passwd[i] != '\0')
                 {
@@ -156,10 +162,10 @@ int handle_input(KeySym ksym, char * buf, int rcount, char * passwd, int * len)
             {
                 if(!isascii(ksym))
                     break;
-                
+
                 cairo_draw_keypressed(ksym);
-                memcpy(passwd + *len, buf, rcount); 
-                *len += rcount; 
+                memcpy(passwd + *len, buf, rcount);
+                *len += rcount;
 
                 break;
             }
@@ -226,15 +232,15 @@ Window init_screen(Display *display, int screen_index)
     attr.background_pixel = BlackPixel(display, screen_index);
 
 
-    window = XCreateWindow(display, root, 0, 0, x, y, 0, 
-            DefaultDepth(display, screen_index), CopyFromParent, 
-            DefaultVisual(display, screen_index), CWOverrideRedirect | CWBackPixel, 
+    window = XCreateWindow(display, root, 0, 0, x, y, 0,
+            DefaultDepth(display, screen_index), CopyFromParent,
+            DefaultVisual(display, screen_index), CWOverrideRedirect | CWBackPixel,
             &attr);
-    
+
 
     XMapRaised(display, window);
 
-    while(XGrabKeyboard(display, root, True, GrabModeAsync, 
+    while(XGrabKeyboard(display, root, True, GrabModeAsync,
                 GrabModeAsync, CurrentTime) != GrabSuccess)
     {
         usleep(500);
@@ -264,10 +270,10 @@ renderer_t init_cairo_renderer(Display* display, int screen_index)
     screen = ScreenOfDisplay(display, screen_index);
 
 
-    renderer.pixmap = XCreatePixmap(display, DefaultRootWindow(display), 
+    renderer.pixmap = XCreatePixmap(display, DefaultRootWindow(display),
             x, y, DefaultDepth(display, screen_index));
 
-    surface = cairo_xlib_surface_create(display, renderer.pixmap, 
+    surface = cairo_xlib_surface_create(display, renderer.pixmap,
     DefaultVisual(display, screen_index), x, y);
 
     renderer.cr = cairo_create(surface);
@@ -288,7 +294,7 @@ cairo_surface_t * desktop_surface_t(Display * display, int screen_index, int x, 
 
     XImage *image;
     image = XGetImage(display, RootWindow(display, screen_index),
-            0, 0, x, y, AllPlanes, ZPixmap); 
+            0, 0, x, y, AllPlanes, ZPixmap);
 
     int stride = cairo_format_stride_for_width (CAIRO_FORMAT_RGB24, x);
 
